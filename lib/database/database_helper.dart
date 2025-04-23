@@ -1,8 +1,4 @@
 import 'dart:io';
-import 'dart:developer';
-
-import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:sqlite_db_recipe_app/models/recipe_model.dart';
@@ -75,7 +71,6 @@ class DatabaseHelper {
 
   Future<String?> exportDatabase() async {
     try {
-      // Request storage permission
       var status = await Permission.manageExternalStorage.request();
       if (!status.isGranted) {
         print("❌ Storage permission denied");
@@ -90,7 +85,6 @@ class DatabaseHelper {
         return null;
       }
 
-      // Save to public Downloads folder
       final directory = Directory('/storage/emulated/0/Download');
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final destPath = '${directory.path}/recipes_backup_$timestamp.db';
@@ -103,5 +97,27 @@ class DatabaseHelper {
       print("❌ Error exporting database: $e");
     }
     return null;
+  }
+
+  Future<void> replaceDatabase(String newDbPath) async {
+    final dbPath = await getDatabasesPath();
+    final targetPath = join(dbPath, 'recipes.db');
+
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+
+    final newDbFile = File(newDbPath);
+    final targetFile = File(targetPath);
+
+    if (await targetFile.exists()) {
+      await targetFile.delete();
+    }
+
+    await newDbFile.copy(targetPath);
+
+    _database = await _initDB('recipes.db');
+    print("✅ Database replaced with uploaded DB.");
   }
 }
